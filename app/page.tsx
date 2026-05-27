@@ -32,9 +32,16 @@ export default function HomePage() {
       const snap = await get(ref(db, `users/${uid}/chats`))
       if (snap.exists()) {
         const raw = snap.val()
-        const list: PreviousChat[] = Object.entries(raw)
-          .map(([id, data]: any) => ({ id, topic: data.topic, createdAt: data.createdAt }))
-          .sort((a, b) => b.createdAt - a.createdAt)
+        // Deduplicate by topic — keep only the most recent chat per topic
+        const byTopic: Record<string, PreviousChat> = {}
+        Object.entries(raw).forEach(([id, data]: any) => {
+          const key = (data.topic || "").toLowerCase()
+          if (!key) return
+          if (!byTopic[key] || (data.createdAt || 0) > byTopic[key].createdAt) {
+            byTopic[key] = { id, topic: data.topic, createdAt: data.createdAt || 0 }
+          }
+        })
+        const list = Object.values(byTopic).sort((a, b) => b.createdAt - a.createdAt)
         setPreviousChats(list)
       } else {
         setPreviousChats([])
@@ -80,6 +87,14 @@ export default function HomePage() {
 
     return () => unsubscribe()
   }, [])
+
+  // Reload previous chats every time the user is available (handles navigating back after delete)
+  useEffect(() => {
+    if (user && !needsOnboarding) {
+      const uid = localStorage.getItem("discuss_user_uid")
+      if (uid) loadPreviousChats(uid)
+    }
+  }, [user, needsOnboarding])
 
   const handleGoogleSignIn = async () => {
     try {

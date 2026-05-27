@@ -174,45 +174,80 @@ function ChatContent() {
       // 2. Normal Conversation Mode
       setIsSharedView(false)
 
+      const uid = localStorage.getItem("discuss_user_uid")
+
+      // Helper: load a chat from Firebase by its ID
+      const tryLoadChat = async (id: string): Promise<boolean> => {
+        const snap = await dbGet(dbRef(db, `chats/${id}`))
+        if (snap.exists()) {
+          const data = snap.val()
+          setChatId(id)
+          setTopic(data.topic || topicParam)
+          setMessages(data.messages || [])
+          setCharacters(data.characters || [])
+          setHasInitialized(true)
+          localStorage.setItem("discuss_active_chat_id", id)
+          return true
+        }
+        // Orphaned — clean up index entry
+        if (uid) {
+          const { remove } = await import("firebase/database")
+          remove(dbRef(db, `users/${uid}/chats/${id}`))
+        }
+        return false
+      }
+
+      // Step 1: Try cached localStorage ID
       const cachedChatId = localStorage.getItem("discuss_active_chat_id")
       if (cachedChatId) {
         try {
-          const snapshot = await dbGet(dbRef(db, `chats/${cachedChatId}`))
-          if (snapshot.exists()) {
-            const data = snapshot.val()
-            setChatId(cachedChatId)
-            setTopic(data.topic || topicParam)
-            setMessages(data.messages || [])
-            setCharacters(data.characters || [])
-            setHasInitialized(true)
-            return
-          }
+          const loaded = await tryLoadChat(cachedChatId)
+          if (loaded) return
         } catch (e) {
-          console.warn("Error fetching cached chat, starting new...", e)
+          console.warn("Error fetching cached chat:", e)
         }
-        // Cached ID not found in DB — clear it
         localStorage.removeItem("discuss_active_chat_id")
       }
 
+      // Step 2: Search user's chat index by topic (handles cross-device, cleared localStorage, etc.)
+      if (uid && topicParam) {
+        try {
+          const indexSnap = await dbGet(dbRef(db, `users/${uid}/chats`))
+          if (indexSnap.exists()) {
+            const all = indexSnap.val() as Record<string, { topic: string; createdAt: number }>
+            // Find all matching topic entries, sorted newest first
+            const matches = Object.entries(all)
+              .filter(([_, d]) => d.topic?.toLowerCase() === topicParam.toLowerCase())
+              .sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0))
+            for (const [matchId] of matches) {
+              try {
+                const loaded = await tryLoadChat(matchId)
+                if (loaded) return
+              } catch (e) {
+                console.warn("Error loading index match:", matchId, e)
+              }
+            }
+          }
+        } catch (e) {
+          console.warn("Error searching user chat index:", e)
+        }
+      }
 
-      // Start a new chat session
+      // Step 3: Nothing found — create a new chat
       const newChatRef = dbPush(dbRef(db, "chats"))
       const newChatId = newChatRef.key || Math.random().toString(36).substring(2, 15)
       setChatId(newChatId)
       localStorage.setItem("discuss_active_chat_id", newChatId)
-
-      // Write to user's chat index so home page can list it
-      const uid = localStorage.getItem("discuss_user_uid")
       if (uid) {
         await dbSet(dbRef(db, `users/${uid}/chats/${newChatId}`), {
           topic: topicParam,
           createdAt: Date.now()
         })
       }
-
       initializeChat(newChatId)
     }
   }
+
 
   const parseGroupChatResponse = (response: string): Message[] => {
     const lines = response.split("\n").filter((line) => line.trim())
