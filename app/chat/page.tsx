@@ -178,9 +178,10 @@ function ChatContent() {
       if (cachedChatId) {
         try {
           const snapshot = await dbGet(dbRef(db, `chats/${cachedChatId}`))
-          if (snapshot.exists() && snapshot.val().topic === topicParam) {
+          if (snapshot.exists()) {
             const data = snapshot.val()
             setChatId(cachedChatId)
+            setTopic(data.topic || topicParam)
             setMessages(data.messages || [])
             setCharacters(data.characters || [])
             setHasInitialized(true)
@@ -189,7 +190,10 @@ function ChatContent() {
         } catch (e) {
           console.warn("Error fetching cached chat, starting new...", e)
         }
+        // Cached ID not found in DB — clear it
+        localStorage.removeItem("discuss_active_chat_id")
       }
+
 
       // Start a new chat session
       const newChatRef = dbPush(dbRef(db, "chats"))
