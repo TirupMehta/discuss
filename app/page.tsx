@@ -58,10 +58,7 @@ export default function HomePage() {
         try {
           const snapshot = await get(ref(db, `users/${currentUser.uid}`))
           if (snapshot.exists() && snapshot.val().name) {
-            const savedName = snapshot.val().name
-            setName(savedName)
-            localStorage.setItem("discuss_user_name", savedName)
-            localStorage.setItem("discuss_user_uid", currentUser.uid)
+            setName(snapshot.val().name)
             setNeedsOnboarding(false)
             loadPreviousChats(currentUser.uid)
           } else {
@@ -71,16 +68,12 @@ export default function HomePage() {
           console.error("Error checking user profile:", error)
           const fallbackName = currentUser.displayName || "User"
           setName(fallbackName)
-          localStorage.setItem("discuss_user_name", fallbackName)
-          localStorage.setItem("discuss_user_uid", currentUser.uid)
           setNeedsOnboarding(false)
         }
       } else {
         setUser(null)
         setName("")
         setPreviousChats([])
-        localStorage.removeItem("discuss_user_name")
-        localStorage.removeItem("discuss_user_uid")
       }
       setAuthLoading(false)
     })
@@ -88,10 +81,10 @@ export default function HomePage() {
     return () => unsubscribe()
   }, [])
 
-  // Reload previous chats every time the user is available (handles navigating back after delete)
+  // Reload previous chats whenever user is authenticated (handles navigating back after delete)
   useEffect(() => {
     if (user && !needsOnboarding) {
-      const uid = localStorage.getItem("discuss_user_uid")
+      const uid = auth.currentUser?.uid
       if (uid) loadPreviousChats(uid)
     }
   }, [user, needsOnboarding])
@@ -126,8 +119,6 @@ export default function HomePage() {
         createdAt: Date.now()
       })
       setName(cleanName)
-      localStorage.setItem("discuss_user_name", cleanName)
-      localStorage.setItem("discuss_user_uid", user.uid)
       setNeedsOnboarding(false)
     } catch (error) {
       console.error("Failed to save name:", error)
@@ -139,26 +130,11 @@ export default function HomePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!topic.trim()) return
-
-    const trimmedTopic = topic.trim()
-
-    // Resume existing chat if exact topic match found
-    const exactMatch = previousChats.find(
-      c => c.topic.toLowerCase() === trimmedTopic.toLowerCase()
-    )
-    if (exactMatch) {
-      localStorage.setItem("discuss_active_chat_id", exactMatch.id)
-      router.push(`/chat?topic=${encodeURIComponent(exactMatch.topic)}`)
-      return
-    }
-
     setIsLoading(true)
-    localStorage.removeItem("discuss_active_chat_id")
-    router.push(`/chat?topic=${encodeURIComponent(trimmedTopic)}`)
+    router.push(`/chat?topic=${encodeURIComponent(topic.trim())}`)
   }
 
   const handleOpenChat = (chat: PreviousChat) => {
-    localStorage.setItem("discuss_active_chat_id", chat.id)
     router.push(`/chat?topic=${encodeURIComponent(chat.topic)}`)
   }
 
