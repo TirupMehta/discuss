@@ -7,7 +7,13 @@ import { signInWithPopup, signOut, onAuthStateChanged, type User } from "firebas
 import { ref, get, set } from "firebase/database"
 import { auth, db, googleProvider } from "@/lib/firebase"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { LogOut, MessageSquare, ArrowRight } from "lucide-react"
+import { LogOut, MessageSquare, ArrowRight, Clock } from "lucide-react"
+
+interface PreviousChat {
+  id: string
+  topic: string
+  createdAt: number
+}
 
 export default function HomePage() {
   const [user, setUser] = useState<User | null>(null)
@@ -18,21 +24,39 @@ export default function HomePage() {
   const [needsOnboarding, setNeedsOnboarding] = useState(false)
   const [onboardingLoading, setOnboardingLoading] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [previousChats, setPreviousChats] = useState<PreviousChat[]>([])
   const router = useRouter()
+
+  const loadPreviousChats = async (uid: string) => {
+    try {
+      const snap = await get(ref(db, `users/${uid}/chats`))
+      if (snap.exists()) {
+        const raw = snap.val()
+        const list: PreviousChat[] = Object.entries(raw)
+          .map(([id, data]: any) => ({ id, topic: data.topic, createdAt: data.createdAt }))
+          .sort((a, b) => b.createdAt - a.createdAt)
+        setPreviousChats(list)
+      } else {
+        setPreviousChats([])
+      }
+    } catch (e) {
+      console.error("Error loading previous chats:", e)
+    }
+  }
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser)
         try {
-          const userRef = ref(db, `users/${currentUser.uid}`)
-          const snapshot = await get(userRef)
+          const snapshot = await get(ref(db, `users/${currentUser.uid}`))
           if (snapshot.exists() && snapshot.val().name) {
             const savedName = snapshot.val().name
             setName(savedName)
             localStorage.setItem("discuss_user_name", savedName)
             localStorage.setItem("discuss_user_uid", currentUser.uid)
             setNeedsOnboarding(false)
+            loadPreviousChats(currentUser.uid)
           } else {
             setNeedsOnboarding(true)
           }
@@ -47,6 +71,7 @@ export default function HomePage() {
       } else {
         setUser(null)
         setName("")
+        setPreviousChats([])
         localStorage.removeItem("discuss_user_name")
         localStorage.removeItem("discuss_user_uid")
       }
@@ -100,9 +125,26 @@ export default function HomePage() {
     e.preventDefault()
     if (!topic.trim()) return
 
+    const trimmedTopic = topic.trim()
+
+    // Resume existing chat if exact topic match found
+    const exactMatch = previousChats.find(
+      c => c.topic.toLowerCase() === trimmedTopic.toLowerCase()
+    )
+    if (exactMatch) {
+      localStorage.setItem("discuss_active_chat_id", exactMatch.id)
+      router.push(`/chat?topic=${encodeURIComponent(exactMatch.topic)}`)
+      return
+    }
+
     setIsLoading(true)
     localStorage.removeItem("discuss_active_chat_id")
-    router.push(`/chat?topic=${encodeURIComponent(topic.trim())}`)
+    router.push(`/chat?topic=${encodeURIComponent(trimmedTopic)}`)
+  }
+
+  const handleOpenChat = (chat: PreviousChat) => {
+    localStorage.setItem("discuss_active_chat_id", chat.id)
+    router.push(`/chat?topic=${encodeURIComponent(chat.topic)}`)
   }
 
   if (authLoading) {
@@ -115,7 +157,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-black flex items-center justify-center px-6 transition-colors duration-300 relative overflow-hidden">
+    <div className="min-h-screen bg-white dark:bg-black flex items-start justify-center px-6 py-16 transition-colors duration-300 relative overflow-hidden">
       <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-sky-500/10 dark:bg-sky-500/5 rounded-full blur-[100px] -z-10 animate-pulse pointer-events-none"></div>
       <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-purple-500/10 dark:bg-purple-500/5 rounded-full blur-[100px] -z-10 animate-pulse pointer-events-none" style={{ animationDelay: "1s" }}></div>
 
@@ -131,7 +173,7 @@ export default function HomePage() {
         </button>
       )}
 
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md space-y-6">
         {!user ? (
           <div className="backdrop-blur-md bg-white/50 dark:bg-white/5 border border-black/5 dark:border-white/10 shadow-2xl rounded-2xl p-8 space-y-8 text-center transition-all duration-300">
             <div className="space-y-3">
@@ -172,7 +214,7 @@ export default function HomePage() {
                 value={onboardingName}
                 onChange={(e) => setOnboardingName(e.target.value)}
                 className="w-full px-4 py-3 text-sm text-black dark:text-white bg-white/50 dark:bg-black/20 border border-black/10 dark:border-white/10 rounded-xl focus:outline-none focus:border-black/30 dark:focus:border-white/30 transition-all placeholder:text-black/40 dark:placeholder:text-white/40"
-                placeholder="Enter your name (e.g. Baburao)"
+                placeholder="Enter your name"
                 disabled={onboardingLoading}
                 autoFocus
                 required
@@ -190,36 +232,64 @@ export default function HomePage() {
             </button>
           </form>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-8">
-            <div className="space-y-4">
-              <div className="text-center mb-8 space-y-2">
-                <h1 className="text-4xl font-extrabold text-black dark:text-white tracking-tight">Discuss</h1>
-                <p className="text-sm text-black/50 dark:text-white/50">Welcome, <span className="font-semibold text-black dark:text-white">{name}</span>! Start a new discussion.</p>
+          <>
+            {/* New chat form */}
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-4">
+                <div className="text-center space-y-2">
+                  <h1 className="text-4xl font-extrabold text-black dark:text-white tracking-tight">Discuss</h1>
+                  <p className="text-sm text-black/50 dark:text-white/50">Welcome, <span className="font-semibold text-black dark:text-white">{name}</span>! Start a new discussion.</p>
+                </div>
+                <label htmlFor="topic" className="block text-black/75 dark:text-white/75 text-sm font-semibold tracking-wide">
+                  Choose a topic
+                </label>
+                <input
+                  id="topic"
+                  type="text"
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  className="w-full px-4 py-3 text-sm text-black dark:text-white bg-white/50 dark:bg-black/20 border border-black/10 dark:border-white/10 rounded-xl focus:outline-none focus:border-black/30 dark:focus:border-white/30 transition-all placeholder:text-black/40 dark:placeholder:text-white/40 shadow-sm"
+                  placeholder="Startup ideas, Artificial Intelligence, Philosophy..."
+                  disabled={isLoading}
+                  autoFocus
+                  required
+                />
               </div>
-              <label htmlFor="topic" className="block text-black/75 dark:text-white/75 text-sm font-semibold tracking-wide">
-                Choose a topic
-              </label>
-              <input
-                id="topic"
-                type="text"
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                className="w-full px-4 py-3 text-sm text-black dark:text-white bg-white/50 dark:bg-black/20 border border-black/10 dark:border-white/10 rounded-xl focus:outline-none focus:border-black/30 dark:focus:border-white/30 transition-all placeholder:text-black/40 dark:placeholder:text-white/40 shadow-sm"
-                placeholder="Startup ideas, Artificial Intelligence, Philosophy..."
-                disabled={isLoading}
-                autoFocus
-                required
-              />
-            </div>
 
-            <button
-              type="submit"
-              disabled={!topic.trim() || isLoading}
-              className="w-full py-3 text-sm font-semibold text-white bg-black dark:bg-white dark:text-black rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 hover:opacity-90 shadow-lg active:scale-98 cursor-pointer"
-            >
-              {isLoading ? "Starting..." : "Begin Conversation"}
-            </button>
-          </form>
+              <button
+                type="submit"
+                disabled={!topic.trim() || isLoading}
+                className="w-full py-3 text-sm font-semibold text-white bg-black dark:bg-white dark:text-black rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 hover:opacity-90 shadow-lg active:scale-98 cursor-pointer"
+              >
+                {isLoading
+                  ? "Starting..."
+                  : previousChats.find(c => c.topic.toLowerCase() === topic.trim().toLowerCase())
+                    ? "Resume Chat"
+                    : "Begin Conversation"}
+              </button>
+            </form>
+
+            {/* Previous chats */}
+            {previousChats.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-xs font-semibold text-black/35 dark:text-white/35 uppercase tracking-widest">Previous chats</p>
+                <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
+                  {previousChats.map(chat => (
+                    <button
+                      key={chat.id}
+                      onClick={() => handleOpenChat(chat)}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left border border-black/5 dark:border-white/5 hover:bg-black/5 dark:hover:bg-white/5 hover:border-black/10 dark:hover:border-white/10 transition-all group"
+                    >
+                      <Clock className="w-3.5 h-3.5 text-black/25 dark:text-white/25 flex-shrink-0 group-hover:text-black/50 dark:group-hover:text-white/50 transition-colors" />
+                      <span className="text-sm text-black/55 dark:text-white/55 group-hover:text-black dark:group-hover:text-white transition-colors truncate flex-1">
+                        {chat.topic}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

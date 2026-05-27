@@ -196,6 +196,16 @@ function ChatContent() {
       const newChatId = newChatRef.key || Math.random().toString(36).substring(2, 15)
       setChatId(newChatId)
       localStorage.setItem("discuss_active_chat_id", newChatId)
+
+      // Write to user's chat index so home page can list it
+      const uid = localStorage.getItem("discuss_user_uid")
+      if (uid) {
+        await dbSet(dbRef(db, `users/${uid}/chats/${newChatId}`), {
+          topic: topicParam,
+          createdAt: Date.now()
+        })
+      }
+
       initializeChat(newChatId)
     }
   }
@@ -432,15 +442,18 @@ function ChatContent() {
   const handleDeleteChat = async () => {
     if (!deleteConfirm) {
       setDeleteConfirm(true)
-      // Auto-reset after 3s if user doesn't confirm
       setTimeout(() => setDeleteConfirm(false), 3000)
       return
     }
-    // Confirmed — delete from Firebase and localStorage
     if (chatId) {
       try {
         const { remove } = await import("firebase/database")
         await remove(dbRef(db, `chats/${chatId}`))
+        // Also remove from user's chat index
+        const uid = localStorage.getItem("discuss_user_uid") || userUid
+        if (uid) {
+          await remove(dbRef(db, `users/${uid}/chats/${chatId}`))
+        }
       } catch (e) {
         console.error("Error deleting chat:", e)
       }
