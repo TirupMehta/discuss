@@ -1,29 +1,27 @@
-# Group Chat AI
+# Discuss
 
-A minimal, fast AI-powered group chat simulator using Next.js 16 and Google's Gemini API.
+An AI-powered group chat simulator. Drop a topic, and a group of AI characters start discussing it like real people — with opinions, jokes, and facts.
+
+Built with Next.js and Google Gemini API.
 
 ## Features
 
-- **Real-time group conversations** - Multiple AI characters chat naturally
-- **Pure black/white theme** - Minimal, distraction-free UI with light/dark mode toggle
-- **Natural character personalities** - Each AI character has distinct voices and humor
-- **Web search capability** - AI can search for facts when needed
-- **Zero configuration** - Just set your API key and go
+- **AI group conversations** — Multiple characters with distinct personalities
+- **Web search** — AI can look up real facts when needed
+- **Firebase Auth** — Google sign-in, persistent chats
+- **Share chats** — Generate a read-only link for any conversation
+- **Dark/light mode** — Clean minimal design
 
 ## Setup
 
-1. Clone and install dependencies:
+1. Clone and install:
    ```bash
    npm install
    ```
 
-2. Create `.env` file with your Google API key:
-   ```
-   GOOGLE_API_KEY=your_key_here
-   GOOGLE_AI_MODEL=gemini-3-flash-preview
-   ```
+2. Create `.env` from `.env.example` and fill in your keys.
 
-3. Run the dev server:
+3. Run dev server:
    ```bash
    npm run dev
    ```
@@ -32,13 +30,12 @@ A minimal, fast AI-powered group chat simulator using Next.js 16 and Google's Ge
 
 ## Environment Variables
 
-- `GOOGLE_API_KEY` - Your Google Generative AI API key
-- `GOOGLE_AI_MODEL` - Model to use (default: gemini-3-flash-preview)
+See `.env.example` for all required variables.
 
 ## Deployment
 
-Push to Vercel - all environment variables will be configured there.
+Deployed at [discuss.tirup.in](https://discuss.tirup.in) via Vercel.
 
 ## Made by
 
-[Tirup Mehta](https://tirup.begins.site)
+[Tirup Mehta](https://tirup.in)
