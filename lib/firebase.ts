@@ -26,15 +26,12 @@ async function getWithFallback(db: Database, uidPath: string, emailPath: string)
   try {
     return await get(ref(db, uidPath));
   } catch (error: any) {
-    if (
-      error.message?.includes("Permission denied") ||
-      error.code === "PERMISSION_DENIED" ||
-      error.status === 401 ||
-      error.status === 403
-    ) {
+    console.warn(`Read failed on ${uidPath}, trying fallback ${emailPath}. Error:`, error);
+    try {
       return await get(ref(db, emailPath));
+    } catch (fallbackError) {
+      throw error;
     }
-    throw error;
   }
 }
 
@@ -42,15 +39,12 @@ async function setWithFallback(db: Database, uidPath: string, emailPath: string,
   try {
     return await set(ref(db, uidPath), value);
   } catch (error: any) {
-    if (
-      error.message?.includes("Permission denied") ||
-      error.code === "PERMISSION_DENIED" ||
-      error.status === 401 ||
-      error.status === 403
-    ) {
+    console.warn(`Write failed on ${uidPath}, trying fallback ${emailPath}. Error:`, error);
+    try {
       return await set(ref(db, emailPath), value);
+    } catch (fallbackError) {
+      throw error;
     }
-    throw error;
   }
 }
 
@@ -58,15 +52,12 @@ async function updateWithFallback(db: Database, uidPath: string, emailPath: stri
   try {
     return await update(ref(db, uidPath), value);
   } catch (error: any) {
-    if (
-      error.message?.includes("Permission denied") ||
-      error.code === "PERMISSION_DENIED" ||
-      error.status === 401 ||
-      error.status === 403
-    ) {
+    console.warn(`Update failed on ${uidPath}, trying fallback ${emailPath}. Error:`, error);
+    try {
       return await update(ref(db, emailPath), value);
+    } catch (fallbackError) {
+      throw error;
     }
-    throw error;
   }
 }
 
