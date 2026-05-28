@@ -18,8 +18,4 @@ const auth = getAuth(app);
 const db = getDatabase(app);
 const googleProvider = new GoogleAuthProvider();
 
-// Firebase RTDB keys cannot contain dots — replace with commas (standard convention)
-// e.g. tirupmehta1@gmail.com → tirupmehta1@gmail,com
-const emailToKey = (email: string): string => email.replace(/\./g, ",");
-
-export { app, auth, db, googleProvider, emailToKey };
+export { app, auth, db, googleProvider };

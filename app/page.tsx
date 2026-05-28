@@ -5,7 +5,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { signInWithPopup, signOut, onAuthStateChanged, type User } from "firebase/auth"
 import { ref, get, set } from "firebase/database"
-import { auth, db, googleProvider, emailToKey } from "@/lib/firebase"
+import { auth, db, googleProvider } from "@/lib/firebase"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { LogOut, MessageSquare, ArrowRight, Clock } from "lucide-react"
 
@@ -53,15 +53,14 @@ export default function HomePage() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (currentUser && currentUser.email) {
+      if (currentUser) {
         setUser(currentUser)
-        const key = emailToKey(currentUser.email)
         try {
-          const snapshot = await get(ref(db, `users/${key}`))
+          const snapshot = await get(ref(db, `users/${currentUser.uid}`))
           if (snapshot.exists() && snapshot.val().name) {
             setName(snapshot.val().name)
             setNeedsOnboarding(false)
-            loadPreviousChats(key)
+            loadPreviousChats(currentUser.uid)
           } else {
             setNeedsOnboarding(true)
           }
@@ -84,8 +83,9 @@ export default function HomePage() {
 
   // Reload previous chats whenever user is authenticated (handles navigating back after delete)
   useEffect(() => {
-    if (user && !needsOnboarding && user.email) {
-      loadPreviousChats(emailToKey(user.email))
+    if (user && !needsOnboarding) {
+      const uid = auth.currentUser?.uid
+      if (uid) loadPreviousChats(uid)
     }
   }, [user, needsOnboarding])
 
@@ -114,8 +114,7 @@ export default function HomePage() {
     setOnboardingLoading(true)
     try {
       const cleanName = onboardingName.trim()
-      const key = user.email ? emailToKey(user.email) : user.uid
-      await set(ref(db, `users/${key}`), {
+      await set(ref(db, `users/${user.uid}`), {
         name: cleanName,
         createdAt: Date.now()
       })
