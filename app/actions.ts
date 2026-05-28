@@ -7,7 +7,7 @@ const MODEL = process.env.GOOGLE_AI_MODEL || "gemini-3.5-flash"
 
 async function callGoogleAI(prompt: string): Promise<string> {
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 12000) // 12 seconds timeout
+  const timeoutId = setTimeout(() => controller.abort(), 25000) // 25 seconds timeout
 
   try {
     const response = await fetch(

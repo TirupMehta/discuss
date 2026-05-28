@@ -298,7 +298,8 @@ function ChatContent() {
 
       setCurrentTyping(message.character)
 
-      const delay = i === 0 ? (Math.random() * 800 + 500) : (Math.random() * 3000 + 1000)
+      // Snappier, faster typing delays (200-500ms for first message, 400-1000ms for subsequent)
+      const delay = i === 0 ? (Math.random() * 300 + 200) : (Math.random() * 600 + 400)
       await new Promise((resolve) => setTimeout(resolve, delay))
 
       if (activeRenderIdRef.current !== currentRenderId) {
@@ -310,7 +311,7 @@ function ChatContent() {
       setMessages((prev) => [...prev, message])
 
       if (i < newMessages.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 500))
+        await new Promise((resolve) => setTimeout(resolve, 200))
       }
     }
 
