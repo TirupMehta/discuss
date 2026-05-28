@@ -5,7 +5,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { signInWithPopup, signOut, onAuthStateChanged, type User } from "firebase/auth"
 import { ref, get, set } from "firebase/database"
-import { auth, db, googleProvider } from "@/lib/firebase"
+import { auth, db, googleProvider, emailToKey, getWithFallback, setWithFallback } from "@/lib/firebase"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { LogOut, MessageSquare, ArrowRight, Clock } from "lucide-react"
 
@@ -29,7 +29,9 @@ export default function HomePage() {
 
   const loadPreviousChats = async (uid: string) => {
     try {
-      const snap = await get(ref(db, `chats/${uid}`))
+      const email = auth.currentUser?.email
+      const emailKey = email ? emailToKey(email) : uid
+      const snap = await getWithFallback(db, `chats/${uid}`, `chats/${emailKey}`)
       if (snap.exists()) {
         const raw = snap.val()
         // Deduplicate by topic — keep only the most recent chat per topic
@@ -56,7 +58,9 @@ export default function HomePage() {
       if (currentUser) {
         setUser(currentUser)
         try {
-          const snapshot = await get(ref(db, `users/${currentUser.uid}`))
+          const email = currentUser.email
+          const emailKey = email ? emailToKey(email) : currentUser.uid
+          const snapshot = await getWithFallback(db, `users/${currentUser.uid}`, `users/${emailKey}`)
           if (snapshot.exists() && snapshot.val().name) {
             setName(snapshot.val().name)
             setNeedsOnboarding(false)
@@ -114,7 +118,9 @@ export default function HomePage() {
     setOnboardingLoading(true)
     try {
       const cleanName = onboardingName.trim()
-      await set(ref(db, `users/${user.uid}`), {
+      const email = user.email
+      const emailKey = email ? emailToKey(email) : user.uid
+      await setWithFallback(db, `users/${user.uid}`, `users/${emailKey}`, {
         name: cleanName,
         createdAt: Date.now()
       })
@@ -126,6 +132,7 @@ export default function HomePage() {
       setOnboardingLoading(false)
     }
   }
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

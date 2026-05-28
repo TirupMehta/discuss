@@ -5,7 +5,7 @@ import { useState, useEffect, useRef, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { generateGroupChat, continueConversation } from "@/app/actions"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { auth, db } from "@/lib/firebase"
+import { auth, db, emailToKey, getWithFallback, setWithFallback, updateWithFallback } from "@/lib/firebase"
 import { ref as dbRef, set as dbSet, get as dbGet, update as dbUpdate, push as dbPush } from "firebase/database"
 import { onAuthStateChanged } from "firebase/auth"
 import { toast, Toaster } from "sonner"
@@ -83,7 +83,9 @@ function ChatContent() {
       if (currentUser) {
         setUserUid(currentUser.uid)
         try {
-          const snapshot = await dbGet(dbRef(db, `users/${currentUser.uid}`))
+          const email = currentUser.email
+          const emailKey = email ? emailToKey(email) : currentUser.uid
+          const snapshot = await getWithFallback(db, `users/${currentUser.uid}`, `users/${emailKey}`)
           if (snapshot.exists() && snapshot.val().name) {
             setUserName(snapshot.val().name)
             setAuthLoading(false)
@@ -128,12 +130,16 @@ function ChatContent() {
   useEffect(() => {
     const uid = auth.currentUser?.uid || userUid
     if (uid && chatId && messages.length > 0 && !isSharedView) {
-      dbSet(dbRef(db, `chats/${uid}/${chatId}`), {
+      const email = auth.currentUser?.email
+      const emailKey = email ? emailToKey(email) : uid
+      const payload = {
         topic,
         createdAt: Date.now(),
         messages,
         characters
-      })
+      }
+      setWithFallback(db, `chats/${uid}/${chatId}`, `chats/${emailKey}/${chatId}`, payload)
+        .catch((e) => console.error("Error syncing messages:", e))
     }
   }, [messages, chatId, isSharedView, topic, userUid, characters])
 
@@ -149,17 +155,28 @@ function ChatContent() {
           router.push("/")
           return
         }
-        const ownerUid = sharedSnap.val() as string
-        const snapshot = await dbGet(dbRef(db, `chats/${ownerUid}/${shareId}`))
-        if (snapshot.exists()) {
-          const data = snapshot.val()
-          setTopic(data.topic || "Shared Chat")
-          setMessages(data.messages || [])
-          setCharacters(data.characters || [])
+        const val = sharedSnap.val()
+        if (val && typeof val === "object" && val.topic) {
+          // Flattened structure: load directly from the shared node
+          setTopic(val.topic || "Shared Chat")
+          setMessages(val.messages || [])
+          setCharacters(val.characters || [])
           setHasInitialized(true)
         } else {
-          toast.error("Shared conversation not found.")
-          router.push("/")
+          // Legacy pointer structure
+          const ownerUid = val as string
+          const emailKey = ownerUid.includes(",") ? ownerUid : ""
+          const snapshot = await getWithFallback(db, `chats/${ownerUid}/${shareId}`, `chats/${emailKey}/${shareId}`)
+          if (snapshot.exists()) {
+            const data = snapshot.val()
+            setTopic(data.topic || "Shared Chat")
+            setMessages(data.messages || [])
+            setCharacters(data.characters || [])
+            setHasInitialized(true)
+          } else {
+            toast.error("Shared conversation not found.")
+            router.push("/")
+          }
         }
       } catch (err) {
         console.error("Error loading shared chat:", err)
@@ -177,7 +194,9 @@ function ChatContent() {
 
       // Helper: load a chat from chats/${uid}/${id}, auto-clean orphaned entries
       const tryLoadChat = async (id: string): Promise<boolean> => {
-        const snap = await dbGet(dbRef(db, `chats/${uid}/${id}`))
+        const email = auth.currentUser?.email
+        const emailKey = email ? emailToKey(email) : uid
+        const snap = await getWithFallback(db, `chats/${uid}/${id}`, `chats/${emailKey}/${id}`)
         if (snap.exists()) {
           const data = snap.val()
           setChatId(id)
@@ -189,14 +208,22 @@ function ChatContent() {
         }
         // Orphaned entry — remove it
         const { remove } = await import("firebase/database")
-        remove(dbRef(db, `chats/${uid}/${id}`))
+        try {
+          await remove(dbRef(db, `chats/${uid}/${id}`))
+        } catch (e: any) {
+          if (e.message?.includes("Permission denied") || e.code === "PERMISSION_DENIED") {
+            await remove(dbRef(db, `chats/${emailKey}/${id}`))
+          }
+        }
         return false
       }
 
       // Search user's chats by topic (case-insensitive), newest first
       if (topicParam) {
         try {
-          const indexSnap = await dbGet(dbRef(db, `chats/${uid}`))
+          const email = auth.currentUser?.email
+          const emailKey = email ? emailToKey(email) : uid
+          const indexSnap = await getWithFallback(db, `chats/${uid}`, `chats/${emailKey}`)
           if (indexSnap.exists()) {
             const all = indexSnap.val() as Record<string, { topic: string; createdAt: number }>
             const matches = Object.entries(all)
@@ -217,10 +244,11 @@ function ChatContent() {
       }
 
       // Nothing found — create a brand new chat
-      const newChatRef = dbPush(dbRef(db, `chats/${uid}`))
-      const newChatId = newChatRef.key || Math.random().toString(36).substring(2, 15)
+      const newChatId = dbPush(dbRef(db, "chats")).key || Math.random().toString(36).substring(2, 15)
       setChatId(newChatId)
-      await dbSet(dbRef(db, `chats/${uid}/${newChatId}`), {
+      const email = auth.currentUser?.email
+      const emailKey = email ? emailToKey(email) : uid
+      await setWithFallback(db, `chats/${uid}/${newChatId}`, `chats/${emailKey}/${newChatId}`, {
         topic: topicParam,
         createdAt: Date.now()
       })
@@ -468,10 +496,20 @@ function ChatContent() {
         const { remove } = await import("firebase/database")
         const uid = auth.currentUser?.uid || userUid
         if (uid) {
-          await remove(dbRef(db, `chats/${uid}/${chatId}`))
+          const email = auth.currentUser?.email
+          const emailKey = email ? emailToKey(email) : uid
+          try {
+            await remove(dbRef(db, `chats/${uid}/${chatId}`))
+          } catch (e: any) {
+            if (e.message?.includes("Permission denied") || e.code === "PERMISSION_DENIED") {
+              await remove(dbRef(db, `chats/${emailKey}/${chatId}`))
+            } else {
+              throw e
+            }
+          }
         }
         // Clean up shared index if it was shared
-        remove(dbRef(db, `shared/${chatId}`))
+        await remove(dbRef(db, `shared/${chatId}`))
       } catch (e) {
         console.error("Error deleting chat:", e)
       }
@@ -484,10 +522,18 @@ function ChatContent() {
     const uid = auth.currentUser?.uid || userUid
     if (!uid) return
     try {
+      const email = auth.currentUser?.email
+      const emailKey = email ? emailToKey(email) : uid
       // Update chat entry to public
-      await dbUpdate(dbRef(db, `chats/${uid}/${chatId}`), { isPublic: true })
-      // Write owner uid to shared index so share links can find the chat
-      await dbSet(dbRef(db, `shared/${chatId}`), uid)
+      await updateWithFallback(db, `chats/${uid}/${chatId}`, `chats/${emailKey}/${chatId}`, { isPublic: true })
+      // Write full chat snapshot to shared index so anyone can read it without permission errors
+      await dbSet(dbRef(db, `shared/${chatId}`), {
+        uid,
+        topic,
+        messages,
+        characters,
+        createdAt: Date.now()
+      })
       const shareUrl = `${window.location.origin}/chat?share=${chatId}`
       await navigator.clipboard.writeText(shareUrl)
       toast.success("Share link copied to clipboard!")
