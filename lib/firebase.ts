@@ -29,7 +29,21 @@ async function getWithFallback(db: Database, uidPath: string, emailPath: string)
     if (snap.exists()) {
       return snap;
     }
-    return await get(ref(db, emailPath));
+    try {
+      return await get(ref(db, emailPath));
+    } catch (fallbackError: any) {
+      // If the email path fails with permission denied, it means the rules are UID-based,
+      // so we can't read the old email path. Just return the empty UID snapshot!
+      if (
+        fallbackError.message?.includes("Permission denied") ||
+        fallbackError.code === "PERMISSION_DENIED" ||
+        fallbackError.status === 401 ||
+        fallbackError.status === 403
+      ) {
+        return snap;
+      }
+      throw fallbackError;
+    }
   } catch (error: any) {
     console.warn(`Read failed on ${uidPath}, trying fallback ${emailPath}. Error:`, error);
     try {
