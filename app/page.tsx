@@ -31,23 +31,30 @@ export default function HomePage() {
     try {
       const email = auth.currentUser?.email
       const emailKey = email ? emailToKey(email) : uid
-      const snap = await getWithFallback(db, `chats/${uid}`, `chats/${emailKey}`)
-      if (snap.exists()) {
-        const raw = snap.val()
-        // Deduplicate by topic — keep only the most recent chat per topic
-        const byTopic: Record<string, PreviousChat> = {}
-        Object.entries(raw).forEach(([id, data]: any) => {
-          const key = (data.topic || "").toLowerCase()
-          if (!key) return
-          if (!byTopic[key] || (data.createdAt || 0) > byTopic[key].createdAt) {
-            byTopic[key] = { id, topic: data.topic, createdAt: data.createdAt || 0 }
-          }
-        })
-        const list = Object.values(byTopic).sort((a, b) => b.createdAt - a.createdAt)
-        setPreviousChats(list)
-      } else {
-        setPreviousChats([])
-      }
+
+      // Read both paths in parallel, swallowing errors to accommodate whatever database rules are active
+      const [uidSnap, emailSnap] = await Promise.all([
+        get(ref(db, `chats/${uid}`)).catch(() => null),
+        emailKey !== uid ? get(ref(db, `chats/${emailKey}`)).catch(() => null) : null
+      ])
+
+      const rawUid = uidSnap && uidSnap.exists() ? uidSnap.val() : {}
+      const rawEmail = emailSnap && emailSnap.exists() ? emailSnap.val() : {}
+
+      // Merge them, giving preference to the new UID-based records if identical keys exist
+      const raw = { ...rawEmail, ...rawUid }
+
+      // Deduplicate by topic — keep only the most recent chat per topic
+      const byTopic: Record<string, PreviousChat> = {}
+      Object.entries(raw).forEach(([id, data]: any) => {
+        const key = (data.topic || "").toLowerCase()
+        if (!key) return
+        if (!byTopic[key] || (data.createdAt || 0) > byTopic[key].createdAt) {
+          byTopic[key] = { id, topic: data.topic, createdAt: data.createdAt || 0 }
+        }
+      })
+      const list = Object.values(byTopic).sort((a, b) => b.createdAt - a.createdAt)
+      setPreviousChats(list)
     } catch (e) {
       console.error("Error loading previous chats:", e)
     }

@@ -24,7 +24,11 @@ const emailToKey = (email: string): string => email.replace(/\./g, ",");
 
 async function getWithFallback(db: Database, uidPath: string, emailPath: string) {
   try {
-    return await get(ref(db, uidPath));
+    const snap = await get(ref(db, uidPath));
+    if (snap.exists()) {
+      return snap;
+    }
+    return await get(ref(db, emailPath));
   } catch (error: any) {
     console.warn(`Read failed on ${uidPath}, trying fallback ${emailPath}. Error:`, error);
     try {
