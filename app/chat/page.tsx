@@ -5,7 +5,7 @@ import { useState, useEffect, useRef, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { generateGroupChat, continueConversation } from "@/app/actions"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { auth, db } from "@/lib/firebase"
+import { auth, db, emailToKey } from "@/lib/firebase"
 import { ref as dbRef, set as dbSet, get as dbGet, update as dbUpdate, push as dbPush } from "firebase/database"
 import { onAuthStateChanged } from "firebase/auth"
 import { toast, Toaster } from "sonner"
@@ -80,10 +80,11 @@ function ChatContent() {
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (currentUser) {
-        setUserUid(currentUser.uid)
+      if (currentUser && currentUser.email) {
+        const key = emailToKey(currentUser.email)
+        setUserUid(key)
         try {
-          const snapshot = await dbGet(dbRef(db, `users/${currentUser.uid}`))
+          const snapshot = await dbGet(dbRef(db, `users/${key}`))
           if (snapshot.exists() && snapshot.val().name) {
             setUserName(snapshot.val().name)
             setAuthLoading(false)
@@ -126,9 +127,9 @@ function ChatContent() {
 
   // Sync messages to Firebase when they update in normal mode
   useEffect(() => {
-    const uid = auth.currentUser?.uid || userUid
-    if (uid && chatId && messages.length > 0 && !isSharedView) {
-      dbSet(dbRef(db, `chats/${uid}/${chatId}`), {
+    const key = auth.currentUser?.email ? emailToKey(auth.currentUser.email) : userUid
+    if (key && chatId && messages.length > 0 && !isSharedView) {
+      dbSet(dbRef(db, `chats/${key}/${chatId}`), {
         topic,
         createdAt: Date.now(),
         messages,
@@ -172,12 +173,12 @@ function ChatContent() {
       // 2. Normal Conversation Mode
       setIsSharedView(false)
 
-      const uid = auth.currentUser?.uid || userUid
-      if (!uid) { router.push("/"); return }
+      const key = auth.currentUser?.email ? emailToKey(auth.currentUser.email) : userUid
+      if (!key) { router.push("/"); return }
 
-      // Helper: load a chat from chats/${uid}/${id}, auto-clean orphaned entries
+      // Helper: load a chat from chats/${key}/${id}, auto-clean orphaned entries
       const tryLoadChat = async (id: string): Promise<boolean> => {
-        const snap = await dbGet(dbRef(db, `chats/${uid}/${id}`))
+        const snap = await dbGet(dbRef(db, `chats/${key}/${id}`))
         if (snap.exists()) {
           const data = snap.val()
           setChatId(id)
@@ -189,14 +190,14 @@ function ChatContent() {
         }
         // Orphaned entry — remove it
         const { remove } = await import("firebase/database")
-        remove(dbRef(db, `chats/${uid}/${id}`))
+        remove(dbRef(db, `chats/${key}/${id}`))
         return false
       }
 
       // Search user's chats by topic (case-insensitive), newest first
       if (topicParam) {
         try {
-          const indexSnap = await dbGet(dbRef(db, `chats/${uid}`))
+          const indexSnap = await dbGet(dbRef(db, `chats/${key}`))
           if (indexSnap.exists()) {
             const all = indexSnap.val() as Record<string, { topic: string; createdAt: number }>
             const matches = Object.entries(all)
@@ -217,10 +218,10 @@ function ChatContent() {
       }
 
       // Nothing found — create a brand new chat
-      const newChatRef = dbPush(dbRef(db, `chats/${uid}`))
+      const newChatRef = dbPush(dbRef(db, `chats/${key}`))
       const newChatId = newChatRef.key || Math.random().toString(36).substring(2, 15)
       setChatId(newChatId)
-      await dbSet(dbRef(db, `chats/${uid}/${newChatId}`), {
+      await dbSet(dbRef(db, `chats/${key}/${newChatId}`), {
         topic: topicParam,
         createdAt: Date.now()
       })
@@ -466,9 +467,9 @@ function ChatContent() {
     if (chatId) {
       try {
         const { remove } = await import("firebase/database")
-        const uid = auth.currentUser?.uid || userUid
-        if (uid) {
-          await remove(dbRef(db, `chats/${uid}/${chatId}`))
+        const key = auth.currentUser?.email ? emailToKey(auth.currentUser.email) : userUid
+        if (key) {
+          await remove(dbRef(db, `chats/${key}/${chatId}`))
         }
         // Clean up shared index if it was shared
         remove(dbRef(db, `shared/${chatId}`))
@@ -481,13 +482,13 @@ function ChatContent() {
 
   const handleShare = async () => {
     if (!chatId) return
-    const uid = auth.currentUser?.uid || userUid
-    if (!uid) return
+    const key = auth.currentUser?.email ? emailToKey(auth.currentUser.email) : userUid
+    if (!key) return
     try {
       // Update chat entry to public
-      await dbUpdate(dbRef(db, `chats/${uid}/${chatId}`), { isPublic: true })
-      // Write owner uid to shared index so share links can find the chat
-      await dbSet(dbRef(db, `shared/${chatId}`), uid)
+      await dbUpdate(dbRef(db, `chats/${key}/${chatId}`), { isPublic: true })
+      // Write owner email key to shared index so share links can find the chat
+      await dbSet(dbRef(db, `shared/${chatId}`), key)
       const shareUrl = `${window.location.origin}/chat?share=${chatId}`
       await navigator.clipboard.writeText(shareUrl)
       toast.success("Share link copied to clipboard!")
