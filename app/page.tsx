@@ -29,7 +29,7 @@ export default function HomePage() {
 
   const loadPreviousChats = async (uid: string) => {
     try {
-      const snap = await get(ref(db, `users/${uid}/chats`))
+      const snap = await get(ref(db, `chats/${uid}`))
       if (snap.exists()) {
         const raw = snap.val()
         // Deduplicate by topic — keep only the most recent chat per topic

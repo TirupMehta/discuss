@@ -126,16 +126,14 @@ function ChatContent() {
 
   // Sync messages to Firebase when they update in normal mode
   useEffect(() => {
-    if (chatId && messages.length > 0 && !isSharedView) {
-      const uid = auth.currentUser?.uid || userUid
-      if (uid && chatId && messages.length > 0 && !isSharedView) {
-        dbSet(dbRef(db, `users/${uid}/chats/${chatId}`), {
-          topic,
-          createdAt: Date.now(),
-          messages,
-          characters
-        })
-      }
+    const uid = auth.currentUser?.uid || userUid
+    if (uid && chatId && messages.length > 0 && !isSharedView) {
+      dbSet(dbRef(db, `chats/${uid}/${chatId}`), {
+        topic,
+        createdAt: Date.now(),
+        messages,
+        characters
+      })
     }
   }, [messages, chatId, isSharedView, topic, userUid, characters])
 
@@ -152,7 +150,7 @@ function ChatContent() {
           return
         }
         const ownerUid = sharedSnap.val() as string
-        const snapshot = await dbGet(dbRef(db, `users/${ownerUid}/chats/${shareId}`))
+        const snapshot = await dbGet(dbRef(db, `chats/${ownerUid}/${shareId}`))
         if (snapshot.exists()) {
           const data = snapshot.val()
           setTopic(data.topic || "Shared Chat")
@@ -177,9 +175,9 @@ function ChatContent() {
       const uid = auth.currentUser?.uid || userUid
       if (!uid) { router.push("/"); return }
 
-      // Helper: load a chat from users/${uid}/chats/${id}, auto-clean orphaned entries
+      // Helper: load a chat from chats/${uid}/${id}, auto-clean orphaned entries
       const tryLoadChat = async (id: string): Promise<boolean> => {
-        const snap = await dbGet(dbRef(db, `users/${uid}/chats/${id}`))
+        const snap = await dbGet(dbRef(db, `chats/${uid}/${id}`))
         if (snap.exists()) {
           const data = snap.val()
           setChatId(id)
@@ -189,16 +187,16 @@ function ChatContent() {
           setHasInitialized(true)
           return true
         }
-        // Orphaned index entry — remove it
+        // Orphaned entry — remove it
         const { remove } = await import("firebase/database")
-        remove(dbRef(db, `users/${uid}/chats/${id}`))
+        remove(dbRef(db, `chats/${uid}/${id}`))
         return false
       }
 
-      // Search user's Firebase index by topic (case-insensitive), newest first
+      // Search user's chats by topic (case-insensitive), newest first
       if (topicParam) {
         try {
-          const indexSnap = await dbGet(dbRef(db, `users/${uid}/chats`))
+          const indexSnap = await dbGet(dbRef(db, `chats/${uid}`))
           if (indexSnap.exists()) {
             const all = indexSnap.val() as Record<string, { topic: string; createdAt: number }>
             const matches = Object.entries(all)
@@ -209,20 +207,20 @@ function ChatContent() {
                 const loaded = await tryLoadChat(matchId)
                 if (loaded) return
               } catch (e) {
-                console.warn("Error loading index match:", e)
+                console.warn("Error loading match:", e)
               }
             }
           }
         } catch (e) {
-          console.warn("Error searching user chat index:", e)
+          console.warn("Error searching chats:", e)
         }
       }
 
       // Nothing found — create a brand new chat
-      const newChatRef = dbPush(dbRef(db, "chats"))
+      const newChatRef = dbPush(dbRef(db, `chats/${uid}`))
       const newChatId = newChatRef.key || Math.random().toString(36).substring(2, 15)
       setChatId(newChatId)
-      await dbSet(dbRef(db, `users/${uid}/chats/${newChatId}`), {
+      await dbSet(dbRef(db, `chats/${uid}/${newChatId}`), {
         topic: topicParam,
         createdAt: Date.now()
       })
@@ -470,9 +468,9 @@ function ChatContent() {
         const { remove } = await import("firebase/database")
         const uid = auth.currentUser?.uid || userUid
         if (uid) {
-          await remove(dbRef(db, `users/${uid}/chats/${chatId}`))
+          await remove(dbRef(db, `chats/${uid}/${chatId}`))
         }
-        // Also clean up shared index if it was shared
+        // Clean up shared index if it was shared
         remove(dbRef(db, `shared/${chatId}`))
       } catch (e) {
         console.error("Error deleting chat:", e)
@@ -486,9 +484,9 @@ function ChatContent() {
     const uid = auth.currentUser?.uid || userUid
     if (!uid) return
     try {
-      // Mark public in user's chat entry
-      await dbUpdate(dbRef(db, `users/${uid}/chats/${chatId}`), { isPublic: true })
-      // Write owner uid to shared index so the share link can find it
+      // Update chat entry to public
+      await dbUpdate(dbRef(db, `chats/${uid}/${chatId}`), { isPublic: true })
+      // Write owner uid to shared index so share links can find the chat
       await dbSet(dbRef(db, `shared/${chatId}`), uid)
       const shareUrl = `${window.location.origin}/chat?share=${chatId}`
       await navigator.clipboard.writeText(shareUrl)
