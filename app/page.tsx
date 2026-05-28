@@ -64,6 +64,9 @@ export default function HomePage() {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser)
+        setName("")
+        setPreviousChats([])
+        setNeedsOnboarding(false)
         try {
           const email = currentUser.email
           const emailKey = email ? emailToKey(email) : currentUser.uid
