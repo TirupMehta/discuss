@@ -20,7 +20,10 @@ export default function HomePage() {
   const [topic, setTopic] = useState("")
   const [name, setName] = useState("")
   const [onboardingName, setOnboardingName] = useState("")
-  const [authLoading, setAuthLoading] = useState(true)
+  const [authLoading, setAuthLoading] = useState(() => {
+    if (typeof window === "undefined") return true
+    return localStorage.getItem("user_signed_in") === "true" || sessionStorage.getItem("pending_redirect") === "true"
+  })
   const [needsOnboarding, setNeedsOnboarding] = useState(false)
   const [onboardingLoading, setOnboardingLoading] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -61,15 +64,20 @@ export default function HomePage() {
   }
 
   useEffect(() => {
-    // Process redirect result to handle potential errors
-    getRedirectResult(auth).catch((error) => {
-      console.error("Redirect sign-in error:", error)
-      setAuthLoading(false)
-    })
+    // Process redirect result to handle potential errors only if redirect is pending
+    const isPending = typeof window !== "undefined" && sessionStorage.getItem("pending_redirect") === "true"
+    if (isPending) {
+      sessionStorage.removeItem("pending_redirect")
+      getRedirectResult(auth).catch((error) => {
+        console.error("Redirect sign-in error:", error)
+        setAuthLoading(false)
+      })
+    }
 
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser)
+        localStorage.setItem("user_signed_in", "true")
         setName("")
         setPreviousChats([])
         setNeedsOnboarding(false)
@@ -92,6 +100,7 @@ export default function HomePage() {
         }
       } else {
         setUser(null)
+        localStorage.removeItem("user_signed_in")
         setName("")
         setPreviousChats([])
       }
@@ -114,6 +123,7 @@ export default function HomePage() {
       setAuthLoading(true)
       const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
       if (isMobile) {
+        sessionStorage.setItem("pending_redirect", "true")
         await signInWithRedirect(auth, googleProvider)
       } else {
         await signInWithPopup(auth, googleProvider)
@@ -126,6 +136,7 @@ export default function HomePage() {
 
   const handleSignOut = async () => {
     try {
+      localStorage.removeItem("user_signed_in")
       await signOut(auth)
     } catch (error) {
       console.error("Sign out failed:", error)
