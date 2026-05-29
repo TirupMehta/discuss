@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { signInWithPopup, signOut, onAuthStateChanged, type User } from "firebase/auth"
+import { signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, type User } from "firebase/auth"
 import { ref, get, set } from "firebase/database"
 import { auth, db, googleProvider, emailToKey, getWithFallback, setWithFallback } from "@/lib/firebase"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -61,6 +61,11 @@ export default function HomePage() {
   }
 
   useEffect(() => {
+    // Process redirect result to handle potential errors
+    getRedirectResult(auth).catch((error) => {
+      console.error("Redirect sign-in error:", error)
+    })
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser)
@@ -106,7 +111,7 @@ export default function HomePage() {
   const handleGoogleSignIn = async () => {
     try {
       setAuthLoading(true)
-      await signInWithPopup(auth, googleProvider)
+      await signInWithRedirect(auth, googleProvider)
     } catch (error) {
       console.error("Sign in failed:", error)
       setAuthLoading(false)
