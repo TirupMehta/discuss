@@ -3,6 +3,7 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { signInWithRedirect, signInWithPopup, getRedirectResult, signOut, onAuthStateChanged, type User } from "firebase/auth"
 import { ref, get, set } from "firebase/database"
 import { auth, db, googleProvider, emailToKey, getWithFallback, setWithFallback } from "@/lib/firebase"
@@ -321,6 +322,16 @@ export default function HomePage() {
             )}
           </>
         )}
+
+        <footer className="text-center space-x-4 text-xs text-black/40 dark:text-white/40 pt-4">
+          <Link href="/privacy" className="hover:text-black dark:hover:text-white hover:underline transition-all">
+            Privacy Policy
+          </Link>
+          <span>&middot;</span>
+          <Link href="/terms" className="hover:text-black dark:hover:text-white hover:underline transition-all">
+            Terms of Service
+          </Link>
+        </footer>
       </div>
     </div>
   )
