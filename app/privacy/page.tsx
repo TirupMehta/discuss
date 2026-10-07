@@ -1,8 +1,30 @@
-"use client"
-
+import type { Metadata } from "next"
 import Link from "next/link"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { ArrowLeft } from "lucide-react"
+
+export const metadata: Metadata = {
+  title: "Privacy Policy",
+  description:
+    "Read the Discuss privacy policy. Learn how we handle Google sign-in data, chat history, Firebase storage, and Gemini AI processing.",
+  alternates: { canonical: "/privacy" },
+  openGraph: {
+    title: "Privacy Policy | Discuss",
+    description:
+      "How Discuss collects, uses, and safeguards your account and chat data.",
+    url: "https://discuss.tirup.in/privacy",
+    siteName: "Discuss",
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Privacy Policy | Discuss",
+    description:
+      "How Discuss collects, uses, and safeguards your account and chat data.",
+  },
+  robots: { index: true, follow: true },
+}
 
 export default function PrivacyPage() {
   return (

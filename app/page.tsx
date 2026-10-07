@@ -180,17 +180,39 @@ export default function HomePage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-black flex flex-col items-center justify-center transition-colors duration-300">
-        <div className="w-10 h-10 border-4 border-black/10 dark:border-white/10 border-t-black dark:border-t-white rounded-full animate-spin"></div>
-        <p className="mt-4 text-xs font-semibold tracking-wide text-black/50 dark:text-white/50 uppercase">Loading session</p>
-      </div>
+      <main className="min-h-screen bg-white dark:bg-black flex flex-col items-center justify-center px-6 py-16 transition-colors duration-300">
+        <div className="flex flex-col items-center justify-center" role="status" aria-label="Loading session">
+          <div className="w-10 h-10 border-4 border-black/10 dark:border-white/10 border-t-black dark:border-t-white rounded-full animate-spin"></div>
+          <p className="mt-4 text-xs font-semibold tracking-wide text-black/50 dark:text-white/50 uppercase">Loading session</p>
+        </div>
+        {/* SEO fallback rendered during auth check so crawlers and no-JS users see real content */}
+        <div className="w-full max-w-md space-y-6 mt-10">
+          <section aria-labelledby="site-title-loading" className="text-center space-y-3">
+            <h1 id="site-title-loading" className="text-3xl font-bold text-black dark:text-white tracking-tight">
+              Discuss
+              <span className="block mt-1 text-base font-medium text-black/60 dark:text-white/60 tracking-normal">
+                AI Group Chat Simulator
+              </span>
+            </h1>
+            <p className="text-sm text-black/60 dark:text-white/60">
+              Drop a topic and watch AI characters debate, brainstorm startup ideas, discuss philosophy, and chat like real people. Powered by Google Gemini.
+            </p>
+          </section>
+          <section aria-labelledby="features-loading" className="rounded-2xl border border-black/5 dark:border-white/10 p-6 text-left space-y-3">
+            <h2 id="features-loading" className="text-lg font-bold text-black dark:text-white text-center">Why use Discuss for AI group conversations?</h2>
+            <p className="text-sm text-black/70 dark:text-white/70 leading-relaxed">
+              Multiple AI personalities with opinions, jokes, and facts. Real facts with web search, persistent Firebase chats, and read-only share links. Brainstorm startup ideas, explore artificial intelligence, and debate philosophy.
+            </p>
+          </section>
+        </div>
+      </main>
     )
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-black flex items-center justify-center px-6 py-16 transition-colors duration-300 relative overflow-hidden">
-      <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-sky-500/10 dark:bg-sky-500/5 rounded-full blur-[100px] -z-10 animate-pulse pointer-events-none"></div>
-      <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-purple-500/10 dark:bg-purple-500/5 rounded-full blur-[100px] -z-10 animate-pulse pointer-events-none" style={{ animationDelay: "1s" }}></div>
+    <main className="min-h-screen bg-white dark:bg-black flex items-center justify-center px-6 py-16 transition-colors duration-300 relative overflow-hidden">
+      <div aria-hidden="true" className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-sky-500/10 dark:bg-sky-500/5 rounded-full blur-[100px] -z-10 animate-pulse pointer-events-none"></div>
+      <div aria-hidden="true" className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-purple-500/10 dark:bg-purple-500/5 rounded-full blur-[100px] -z-10 animate-pulse pointer-events-none" style={{ animationDelay: "1s" }}></div>
 
       <ThemeToggle className="fixed top-4 right-4 md:top-6 md:right-6" />
 
@@ -206,14 +228,20 @@ export default function HomePage() {
 
       <div className="w-full max-w-md space-y-6">
         {!user ? (
-          <div className="backdrop-blur-md bg-white/50 dark:bg-white/5 border border-black/5 dark:border-white/10 shadow-2xl rounded-2xl p-8 space-y-8 text-center transition-all duration-300">
+          <>
+          <section aria-labelledby="site-title" className="backdrop-blur-md bg-white/50 dark:bg-white/5 border border-black/5 dark:border-white/10 shadow-2xl rounded-2xl p-8 space-y-8 text-center transition-all duration-300">
             <div className="space-y-3">
               <div className="mx-auto w-12 h-12 bg-black dark:bg-white rounded-xl flex items-center justify-center shadow-lg transform rotate-6">
-                <MessageSquare className="w-6 h-6 text-white dark:text-black" />
+                <MessageSquare className="w-6 h-6 text-white dark:text-black" aria-hidden="true" />
               </div>
-              <h1 className="text-3xl font-bold text-black dark:text-white tracking-tight">Discuss</h1>
+              <h1 id="site-title" className="text-3xl font-bold text-black dark:text-white tracking-tight">
+                Discuss
+                <span className="block mt-1 text-base font-medium text-black/60 dark:text-white/60 tracking-normal">
+                  AI Group Chat Simulator
+                </span>
+              </h1>
               <p className="text-sm text-black/60 dark:text-white/60">
-                Sign in with Google to start or join AI group chats.
+                Drop a topic and watch AI characters debate, brainstorm startup ideas, discuss philosophy, and chat like real people. Powered by Google Gemini. Sign in with Google to start.
               </p>
             </div>
 
@@ -221,7 +249,7 @@ export default function HomePage() {
               onClick={handleGoogleSignIn}
               className="w-full flex items-center justify-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold border border-black/10 dark:border-white/10 bg-white dark:bg-transparent text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-all shadow-md active:scale-98 cursor-pointer"
             >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                 <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
                 <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
@@ -229,7 +257,98 @@ export default function HomePage() {
               </svg>
               Sign In with Google
             </button>
-          </div>
+          </section>
+
+          <section aria-labelledby="features-heading" className="rounded-2xl border border-black/5 dark:border-white/10 p-6 text-left space-y-4">
+            <h2 id="features-heading" className="text-lg font-bold text-black dark:text-white tracking-tight text-center">
+              Why use Discuss for AI group conversations?
+            </h2>
+            <ul className="space-y-3 text-sm text-black/70 dark:text-white/70 leading-relaxed">
+              <li><strong className="text-black dark:text-white">Multiple AI personalities:</strong> distinct characters with opinions, jokes, and facts debate your topic.</li>
+              <li><strong className="text-black dark:text-white">Real facts with web search:</strong> AI looks up current information when needed.</li>
+              <li><strong className="text-black dark:text-white">Brainstorm &amp; learn:</strong> explore startup ideas, artificial intelligence, philosophy, and more.</li>
+              <li><strong className="text-black dark:text-white">Share &amp; resume:</strong> persistent Firebase chats with read-only share links.</li>
+            </ul>
+          </section>
+
+          <section aria-labelledby="how-heading" className="rounded-2xl border border-black/5 dark:border-white/10 p-6 text-left space-y-3">
+            <h2 id="how-heading" className="text-lg font-bold text-black dark:text-white tracking-tight text-center">
+              How it works
+            </h2>
+            <ol className="space-y-2 text-sm text-black/70 dark:text-white/70 leading-relaxed list-decimal list-inside">
+              <li>Sign in with Google securely via Firebase Auth.</li>
+              <li>Enter any topic — for example, &ldquo;Should AI be regulated?&rdquo; or &ldquo;Startup ideas for students&rdquo;.</li>
+              <li>Watch AI characters generate a lively group chat, then jump in anytime.</li>
+            </ol>
+          </section>
+
+          <section aria-labelledby="faq-heading" className="rounded-2xl border border-black/5 dark:border-white/10 p-6 text-left space-y-3">
+            <h2 id="faq-heading" className="text-lg font-bold text-black dark:text-white tracking-tight text-center">
+              Frequently asked questions
+            </h2>
+            <div className="space-y-2 text-sm text-black/70 dark:text-white/70">
+              <details className="rounded-lg border border-black/5 dark:border-white/10 px-3 py-2">
+                <summary className="font-semibold text-black dark:text-white cursor-pointer">What is Discuss?</summary>
+                <p className="mt-1">Discuss is a free AI group chat simulator that creates realistic multi-character conversations on any topic, powered by Google Gemini.</p>
+              </details>
+              <details className="rounded-lg border border-black/5 dark:border-white/10 px-3 py-2">
+                <summary className="font-semibold text-black dark:text-white cursor-pointer">Do I need an account?</summary>
+                <p className="mt-1">Yes, sign in with Google to create, save, and resume your AI discussions across devices.</p>
+              </details>
+              <details className="rounded-lg border border-black/5 dark:border-white/10 px-3 py-2">
+                <summary className="font-semibold text-black dark:text-white cursor-pointer">Can I share my chats?</summary>
+                <p className="mt-1">Yes. Every conversation can generate a read-only share link anyone can view without signing in.</p>
+              </details>
+              <details className="rounded-lg border border-black/5 dark:border-white/10 px-3 py-2">
+                <summary className="font-semibold text-black dark:text-white cursor-pointer">Is Discuss free?</summary>
+                <p className="mt-1">Yes, Discuss is free to use for brainstorming, learning, debating, and casual AI roleplay.</p>
+              </details>
+            </div>
+            <script
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{
+                __html: JSON.stringify({
+                  "@context": "https://schema.org",
+                  "@type": "FAQPage",
+                  mainEntity: [
+                    {
+                      "@type": "Question",
+                      name: "What is Discuss?",
+                      acceptedAnswer: {
+                        "@type": "Answer",
+                        text: "Discuss is a free AI group chat simulator that creates realistic multi-character conversations on any topic, powered by Google Gemini.",
+                      },
+                    },
+                    {
+                      "@type": "Question",
+                      name: "Do I need an account?",
+                      acceptedAnswer: {
+                        "@type": "Answer",
+                        text: "Yes, sign in with Google to create, save, and resume your AI discussions across devices.",
+                      },
+                    },
+                    {
+                      "@type": "Question",
+                      name: "Can I share my chats?",
+                      acceptedAnswer: {
+                        "@type": "Answer",
+                        text: "Every conversation can generate a read-only share link anyone can view without signing in.",
+                      },
+                    },
+                    {
+                      "@type": "Question",
+                      name: "Is Discuss free?",
+                      acceptedAnswer: {
+                        "@type": "Answer",
+                        text: "Yes, Discuss is free to use for brainstorming, learning, debating, and casual AI roleplay.",
+                      },
+                    },
+                  ],
+                }),
+              }}
+            />
+          </section>
+          </>
         ) : needsOnboarding ? (
           <form onSubmit={handleOnboardingSubmit} className="backdrop-blur-md bg-white/50 dark:bg-white/5 border border-black/5 dark:border-white/10 shadow-2xl rounded-2xl p-8 space-y-6 transition-all duration-300">
             <div className="space-y-2">
@@ -265,11 +384,11 @@ export default function HomePage() {
         ) : (
           <>
             {/* New chat form */}
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6" aria-label="Start a new AI discussion">
               <div className="space-y-4">
                 <div className="text-center space-y-2">
-                  <h1 className="text-4xl font-extrabold text-black dark:text-white tracking-tight">Discuss</h1>
-                  <p className="text-sm text-black/50 dark:text-white/50">Welcome, <span className="font-semibold text-black dark:text-white">{name}</span>! Start a new discussion.</p>
+                  <h1 className="text-4xl font-extrabold text-black dark:text-white tracking-tight">Discuss <span className="block mt-1 text-base font-medium text-black/50 dark:text-white/50">AI Group Chat Simulator</span></h1>
+                  <p className="text-sm text-black/50 dark:text-white/50">Welcome, <span className="font-semibold text-black dark:text-white">{name}</span>! Start a new AI group discussion.</p>
                 </div>
                 <label htmlFor="topic" className="block text-black/75 dark:text-white/75 text-sm font-semibold tracking-wide">
                   Choose a topic
@@ -323,16 +442,22 @@ export default function HomePage() {
           </>
         )}
 
-        <footer className="text-center space-x-4 text-xs text-black/40 dark:text-white/40 pt-4">
-          <Link href="/privacy" className="hover:text-black dark:hover:text-white hover:underline transition-all">
-            Privacy Policy
-          </Link>
-          <span>&middot;</span>
-          <Link href="/terms" className="hover:text-black dark:hover:text-white hover:underline transition-all">
-            Terms of Service
-          </Link>
+        <footer className="text-center text-xs text-black/40 dark:text-white/40 pt-4">
+          <nav aria-label="Legal" className="space-x-4">
+            <Link href="/privacy" className="hover:text-black dark:hover:text-white hover:underline transition-all">
+              Privacy Policy
+            </Link>
+            <span aria-hidden="true">&middot;</span>
+            <Link href="/terms" className="hover:text-black dark:hover:text-white hover:underline transition-all">
+              Terms of Service
+            </Link>
+            <span aria-hidden="true">&middot;</span>
+            <a href="https://tirup.in" target="_blank" rel="noopener" className="hover:text-black dark:hover:text-white hover:underline transition-all">
+              Made by Tirup Mehta
+            </a>
+          </nav>
         </footer>
       </div>
-    </div>
+    </main>
   )
 }

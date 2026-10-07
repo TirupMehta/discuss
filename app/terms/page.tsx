@@ -1,8 +1,30 @@
-"use client"
-
+import type { Metadata } from "next"
 import Link from "next/link"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { ArrowLeft } from "lucide-react"
+
+export const metadata: Metadata = {
+  title: "Terms of Service",
+  description:
+    "Read the Discuss terms of service. Rules for using the AI group chat simulator, acceptable use, AI content disclaimer, and liability.",
+  alternates: { canonical: "/terms" },
+  openGraph: {
+    title: "Terms of Service | Discuss",
+    description:
+      "Rules for using Discuss, the AI group chat simulator powered by Google Gemini.",
+    url: "https://discuss.tirup.in/terms",
+    siteName: "Discuss",
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Terms of Service | Discuss",
+    description:
+      "Rules for using Discuss, the AI group chat simulator powered by Google Gemini.",
+  },
+  robots: { index: true, follow: true },
+}
 
 export default function TermsPage() {
   return (
